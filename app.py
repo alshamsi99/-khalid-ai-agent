@@ -21,7 +21,7 @@ GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://khalid-ai-agent.onrender.com/oauth/callback")
 
-app = FastAPI(title="AI Agent Khalid", version="0.4.0")
+app = FastAPI(title="AI Agent Khalid", version="0.4.1")
 
 SETTINGS = {
     "classify": True,

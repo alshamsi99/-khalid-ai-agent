@@ -1,0 +1,11 @@
+{
+  "name":"AI Agent خالد",
+  "short_name":"AI Agent",
+  "start_url":"./index.html",
+  "display":"standalone",
+  "background_color":"#08111f",
+  "theme_color":"#0b1220",
+  "lang":"ar",
+  "dir":"rtl",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

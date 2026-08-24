@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1220" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<title>AI Agent خالد</title>
+<style>
+:root{--bg:#08111f;--panel:#111827;--panel2:#0d1728;--text:#f8fafc;--muted:#94a3b8;--line:#243042;--blue:#2563eb;--blue2:#60a5fa;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--gray:#64748b}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;background:linear-gradient(180deg,#07101d,#0f172a);color:var(--text)}button,input,select{font:inherit}.app{max-width:1220px;margin:auto;padding:18px 18px calc(95px + env(safe-area-inset-bottom))}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:4px 0 20px}.brand{display:flex;align-items:center;gap:12px}.logo{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--blue),var(--blue2));font-weight:800;box-shadow:0 10px 30px rgba(37,99,235,.28)}h1{font-size:21px;margin:0}.subtitle{margin-top:4px;color:var(--muted);font-size:13px}.sync{display:flex;align-items:center;gap:8px;background:#0e1a2e;border:1px solid var(--line);padding:10px 13px;border-radius:14px;font-size:13px;color:#cbd5e1}.pulse{width:9px;height:9px;border-radius:99px;background:var(--green);box-shadow:0 0 0 5px rgba(34,197,94,.10)}.layout{display:grid;grid-template-columns:265px minmax(0,1fr);gap:17px}.box{background:rgba(17,24,39,.94);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.18)}.sidebar{padding:15px}.section-title{font-size:12px;color:var(--muted);padding:5px 9px 9px}.navbtn{width:100%;border:0;background:transparent;color:#dbeafe;padding:12px 13px;border-radius:12px;text-align:right;cursor:pointer;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between}.navbtn.active,.navbtn:hover{background:#16233a}.badge{background:#243b63;color:#bfdbfe;padding:2px 8px;border-radius:999px;font-size:12px}.channels{margin-top:17px;border-top:1px solid var(--line);padding-top:14px}.channel{display:flex;justify-content:space-between;align-items:center;padding:10px 8px;color:#cbd5e1;font-size:14px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:8px}.on{background:var(--green)}.off{background:var(--gray)}.main{padding:17px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:17px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:15px;cursor:pointer}.stat small{color:var(--muted)}.stat strong{display:block;margin-top:6px;font-size:27px}.stat .hint{font-size:11px;color:#64748b;margin-top:3px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.toolbar h2{margin:0;font-size:18px}.tools{display:flex;gap:8px}.search{background:#0b1424;border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:#fff;outline:none;min-width:220px}.btn{border:1px solid var(--line);background:#172338;color:#e2e8f0;border-radius:12px;padding:10px 13px;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue)}.mail-list{border:1px solid var(--line);border-radius:16px;overflow:hidden}.mail{display:grid;grid-template-columns:115px 1fr 120px;gap:12px;align-items:center;padding:15px 13px;background:#0c1626;border-top:1px solid var(--line);cursor:pointer}.mail:first-child{border-top:0}.mail:hover{background:#101e33}.mail h3{margin:0 0 5px;font-size:14px}.mail p{margin:0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mail time{color:#94a3b8;font-size:12px;text-align:left}.tag{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}.follow{background:rgba(245,158,11,.15);color:#fbbf24}.none{background:rgba(100,116,139,.18);color:#cbd5e1}.reply{background:rgba(37,99,235,.18);color:#93c5fd}.footer-note{margin-top:14px;color:#73839a;font-size:12px;line-height:1.7}.overlay{position:fixed;inset:0;background:rgba(2,6,23,.72);display:none;align-items:flex-end;justify-content:center;padding:18px;z-index:50}.overlay.show{display:flex}.modal{width:min(680px,100%);background:#101827;border:1px solid var(--line);border-radius:22px;padding:18px;max-height:88vh;overflow:auto;box-shadow:0 30px 90px rgba(0,0,0,.45)}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.modal h3{margin:0 0 4px;font-size:18px}.modal .meta{color:var(--muted);font-size:12px}.close{border:0;background:#18263d;color:#fff;width:34px;height:34px;border-radius:10px;cursor:pointer}.panel{background:#0b1424;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:13px}.panel h4{margin:0 0 9px;font-size:13px}.panel p{margin:0;color:#cbd5e1;line-height:1.8;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.rule{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}.rule:first-child{border-top:0}.switch{position:relative;width:46px;height:26px;background:#334155;border-radius:20px;cursor:pointer}.switch.onx{background:var(--blue)}.switch:after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;background:white;border-radius:50%;transition:.2s}.switch.onx:after{right:23px}.bottomnav{display:none;position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));background:rgba(15,23,42,.96);border:1px solid var(--line);border-radius:18px;padding:8px;z-index:20;backdrop-filter:blur(16px)}.bottomnav button{flex:1;border:0;background:transparent;color:#94a3b8;padding:8px 4px;border-radius:12px}.bottomnav .active{color:#fff;background:#16233a}.empty{padding:26px;text-align:center;color:var(--muted)}
+@media(max-width:850px){.app{padding:14px 14px calc(100px + env(safe-area-inset-bottom))}.layout{grid-template-columns:1fr}.sidebar{display:none}.summary{grid-template-columns:1fr 1fr}.mail{grid-template-columns:1fr}.mail time{text-align:right}.toolbar{align-items:stretch;flex-direction:column}.tools{width:100%}.search{min-width:0;flex:1}.top{align-items:flex-start}.sync{font-size:12px}.bottomnav{display:flex}.modal{border-radius:22px 22px 16px 16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="logo">AI</div><div><h1>AI Agent خالد</h1><div class="subtitle">مساعدك لإدارة البريد والرسائل</div></div></div>
+    <div class="sync"><span class="pulse"></span><span id="syncText">Gmail متصل • آخر تحديث الآن</span></div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar box">
+      <div class="section-title">البريد</div>
+      <button class="navbtn active" data-filter="all">كل الرسائل <span class="badge">2</span></button>
+      <button class="navbtn" data-filter="reply">يحتاج رد <span class="badge">0</span></button>
+      <button class="navbtn" data-filter="follow">متابعة <span class="badge">1</span></button>
+      <button class="navbtn" data-filter="none">لا يحتاج إجراء <span class="badge">1</span></button>
+      <div class="channels">
+        <div class="section-title">القنوات</div>
+        <div class="channel"><span><span class="dot off"></span>Gmail</span><small>يحتاج OAuth</small></div>
+        <div class="channel"><span><span class="dot off"></span>WhatsApp</span><small>لاحقًا</small></div>
+        <div class="channel"><span><span class="dot off"></span>Instagram</span><small>لاحقًا</small></div>
+      </div>
+    </aside>
+
+    <main class="main box">
+      <section class="summary">
+        <div class="stat" data-filter="reply"><small>يحتاج رد</small><strong>0</strong><div class="hint">لا توجد رسائل</div></div>
+        <div class="stat" data-filter="follow"><small>متابعة</small><strong>1</strong><div class="hint">راجعها بنفسك</div></div>
+        <div class="stat" data-filter="none"><small>لا يحتاج إجراء</small><strong>1</strong><div class="hint">إشعار فقط</div></div>
+        <div class="stat" onclick="openSettings()"><small>حالة الوكيل</small><strong style="font-size:20px;color:#86efac">آمن</strong><div class="hint">لا يرسل تلقائيًا</div></div>
+      </section>
+
+      <div class="toolbar">
+        <h2 id="listTitle">أحدث الرسائل</h2>
+        <div class="tools"><input id="search" class="search" placeholder="ابحث في البريد..." /><button class="btn primary" onclick="refreshMail()">تحديث</button><button class="btn" onclick="openSettings()">الإعدادات</button></div>
+      </div>
+
+      <div id="mailList" class="mail-list">
+        <article class="mail" data-type="follow" data-text="google تنبيه أمني openai صلاحيات" onclick="openMail('google')">
+          <div><span class="tag follow">متابعة</span></div>
+          <div><h3>Google — تنبيه أمني</h3><p>تم منح OpenAI الإذن بالوصول إلى بعض بيانات حساب Google. يفضّل مراجعة الصلاحيات.</p></div>
+          <time>اليوم</time>
+        </article>
+        <article class="mail" data-type="none" data-text="replit daily credits starter plan" onclick="openMail('replit')">
+          <div><span class="tag none">لا إجراء</span></div>
+          <div><h3>Replit — Daily Credits</h3><p>Good news—you get fresh credits every day on your Starter plan.</p></div>
+          <time>اليوم</time>
+        </article>
+      </div>
+      <div class="footer-note">وضع الأمان مفعّل: الوكيل يصنّف ويقترح فقط. أي إرسال فعلي يحتاج موافقتك.</div>
+    </main>
+  </div>
+</div>
+
+<nav class="bottomnav"><button class="active" onclick="filterMail('all')">البريد</button><button onclick="filterMail('follow')">متابعة</button><button onclick="openSettings()">الوكيل</button><button onclick="alert('سيتم ربط WhatsApp وInstagram في المرحلة التالية')">القنوات</button></nav>
+
+<div id="mailModal" class="overlay" onclick="if(event.target===this)closeModal('mailModal')">
+  <div class="modal"><div class="modal-head"><div><h3 id="mTitle"></h3><div class="meta" id="mMeta"></div></div><button class="close" onclick="closeModal('mailModal')">×</button></div><div class="panel"><h4>ملخص الوكيل</h4><p id="mSummary"></p></div><div class="panel"><h4>قرار الوكيل</h4><p id="mDecision"></p></div><div class="actions" id="mActions"></div></div>
+</div>
+
+<div id="settingsModal" class="overlay" onclick="if(event.target===this)closeModal('settingsModal')">
+  <div class="modal"><div class="modal-head"><div><h3>إعدادات الوكيل</h3><div class="meta">قواعد الأمان والتعامل مع البريد</div></div><button class="close" onclick="closeModal('settingsModal')">×</button></div>
+    <div class="panel">
+      <div class="rule"><div><b>تصنيف الرسائل تلقائيًا</b><div class="meta">يحتاج رد / متابعة / لا إجراء</div></div><div class="switch onx" data-key="classify" onclick="toggleRule(this)"></div></div>
+      <div class="rule"><div><b>اقتراح الردود</b><div class="meta">إنشاء رد مقترح فقط عند الحاجة</div></div><div class="switch onx" data-key="suggest" onclick="toggleRule(this)"></div></div>
+      <div class="rule"><div><b>الإرسال التلقائي</b><div class="meta">مغلق للحماية — يحتاج موافقتك</div></div><div class="switch" data-key="autosend" onclick="toggleRule(this)"></div></div>
+      <div class="rule"><div><b>تنبيه للرسائل المهمة</b><div class="meta">إظهار تنبيه للرسائل الأمنية أو العاجلة</div></div><div class="switch onx" data-key="alerts" onclick="toggleRule(this)"></div></div>
+    </div>
+    <div class="actions"><button class="btn primary" onclick="saveSettings()">حفظ الإعدادات</button><button class="btn" onclick="closeModal('settingsModal')">إلغاء</button></div>
+  </div>
+</div>
+
+<script>
+let currentFilter='all';
+let cache=[];
+const typeClass={follow:'follow',none:'none',reply:'reply'};
+const typeLabel={follow:'متابعة',none:'لا إجراء',reply:'يحتاج رد'};
+
+async function api(path, options={}){
+  const r=await fetch(path,{headers:{'Content-Type':'application/json',...(options.headers||{})},...options});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function esc(v=''){return String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function loadStatus(){
+  try{
+    const s=await api('/api/status');
+    const c=s.counts;
+    const stats=document.querySelectorAll('.stat strong');
+    stats[0].textContent=c.reply; stats[1].textContent=c.follow; stats[2].textContent=c.none;
+    const badges=document.querySelectorAll('.navbtn .badge');
+    badges[0].textContent=c.all; badges[1].textContent=c.reply; badges[2].textContent=c.follow; badges[3].textContent=c.none;
+    document.getElementById('syncText').textContent=s.gmail.connected?'Gmail متصل • تم التحديث الآن':'وضع تجريبي • Gmail يحتاج OAuth';
+  }catch(e){document.getElementById('syncText').textContent='تعذر الوصول للخادم';}
+}
+
+async function loadMessages(){
+  const q=document.getElementById('search').value.trim();
+  const params=new URLSearchParams();
+  if(currentFilter!=='all') params.set('classification',currentFilter);
+  if(q) params.set('q',q);
+  const d=await api('/api/messages?'+params.toString()); cache=d.items; renderMessages();
+}
+
+function renderMessages(){
+  const el=document.getElementById('mailList');
+  if(!cache.length){el.innerHTML='<div class="empty">لا توجد رسائل في هذا القسم</div>';return;}
+  el.innerHTML=cache.map(m=>`<article class="mail" onclick="openMail('${esc(m.id)}')">
+    <div><span class="tag ${typeClass[m.classification]}">${typeLabel[m.classification]}</span></div>
+    <div><h3>${esc(m.sender.split('<')[0].trim())} — ${esc(m.subject)}</h3><p>${esc(m.snippet)}</p></div>
+    <time>${esc(m.received)}</time></article>`).join('');
+}
+
+async function openMail(id){
+  const m=await api('/api/messages/'+encodeURIComponent(id));
+  document.getElementById('mTitle').textContent=m.subject;
+  document.getElementById('mMeta').textContent='من: '+m.sender+' • التصنيف: '+typeLabel[m.classification];
+  document.getElementById('mSummary').textContent=m.summary;
+  document.getElementById('mDecision').textContent=m.decision;
+  let actions='';
+  if(m.classification==='follow') actions=`<button class="btn primary" onclick="doAction('${esc(id)}','follow')">إبقاء للمتابعة</button>`;
+  if(m.classification==='reply') actions=`<button class="btn primary" onclick="doAction('${esc(id)}','approve_draft')">اعتماد المسودة</button>`;
+  if(m.classification==='none') actions=`<button class="btn" onclick="doAction('${esc(id)}','archive')">أرشفة</button>`;
+  actions+='<button class="btn" onclick="closeModal('mailModal')">إغلاق</button>';
+  document.getElementById('mActions').innerHTML=actions;
+  document.getElementById('mailModal').classList.add('show');
+}
+
+async function doAction(id,action){
+  const r=await api('/api/messages/'+encodeURIComponent(id)+'/action',{method:'POST',body:JSON.stringify({action})});
+  alert(r.message||'تم تسجيل الإجراء');
+  if(r.ok) closeModal('mailModal');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+async function openSettings(){
+  const s=await api('/api/settings');
+  document.querySelectorAll('[data-key]').forEach(x=>x.classList.toggle('onx',!!s[x.dataset.key]));
+  document.getElementById('settingsModal').classList.add('show');
+}
+function toggleRule(el){if(el.dataset.key==='autosend'){alert('الإرسال التلقائي مقفل في النسخة الحالية للأمان.');return;}el.classList.toggle('onx')}
+async function saveSettings(){
+  const payload={};document.querySelectorAll('[data-key]').forEach(x=>payload[x.dataset.key]=x.classList.contains('onx'));
+  await api('/api/settings',{method:'POST',body:JSON.stringify(payload)});closeModal('settingsModal');alert('تم حفظ إعدادات الوكيل');
+}
+function filterMail(type){
+  currentFilter=type;document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.filter===type));
+  document.getElementById('listTitle').textContent=type==='all'?'أحدث الرسائل':type==='reply'?'يحتاج رد':type==='follow'?'رسائل المتابعة':'لا يحتاج إجراء';
+  loadMessages();
+}
+document.querySelectorAll('[data-filter]').forEach(x=>x.addEventListener('click',()=>filterMail(x.dataset.filter)));
+let searchTimer;document.getElementById('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(loadMessages,250)});
+async function refreshMail(){const b=document.querySelector('.tools .primary');b.textContent='جارٍ التحديث...';await Promise.all([loadStatus(),loadMessages()]);b.textContent='تم التحديث ✓';setTimeout(()=>b.textContent='تحديث',1000)}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+loadStatus();loadMessages();
+</script>
+</body>
+</html>

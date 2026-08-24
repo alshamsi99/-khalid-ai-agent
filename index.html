@@ -17,7 +17,7 @@
 <div class="app">
   <header class="top">
     <div class="brand"><div class="logo">AI</div><div><h1>AI Agent خالد</h1><div class="subtitle">مساعدك لإدارة البريد والرسائل</div></div></div>
-    <div class="sync"><span class="pulse"></span><span id="syncText">Gmail متصل • آخر تحديث الآن</span></div>
+    <div class="sync"><span class="pulse" id="gmailPulse"></span><span id="syncText">جاري فحص Gmail...</span></div>
   </header>
 
   <div class="layout">
@@ -29,7 +29,7 @@
       <button class="navbtn" data-filter="none">لا يحتاج إجراء <span class="badge">1</span></button>
       <div class="channels">
         <div class="section-title">القنوات</div>
-        <div class="channel"><span><span class="dot off"></span>Gmail</span><small>يحتاج OAuth</small></div>
+        <div class="channel"><span><span class="dot off" id="gmailDot"></span>Gmail</span><small id="gmailChannelState">جاري الفحص</small></div>
         <div class="channel"><span><span class="dot off"></span>WhatsApp</span><small>لاحقًا</small></div>
         <div class="channel"><span><span class="dot off"></span>Instagram</span><small>لاحقًا</small></div>
       </div>
@@ -45,7 +45,7 @@
 
       <div class="toolbar">
         <h2 id="listTitle">أحدث الرسائل</h2>
-        <div class="tools"><input id="search" class="search" placeholder="ابحث في البريد..." /><button class="btn primary" onclick="refreshMail()">تحديث</button><button class="btn" onclick="openSettings()">الإعدادات</button></div>
+        <div class="tools"><input id="search" class="search" placeholder="ابحث في البريد..." /><button class="btn" id="connectBtn" onclick="connectGmail()">ربط Gmail</button><button class="btn primary" onclick="refreshMail()">تحديث</button><button class="btn" onclick="openSettings()">الإعدادات</button></div>
       </div>
 
       <div id="mailList" class="mail-list">
@@ -105,7 +105,11 @@ async function loadStatus(){
     stats[0].textContent=c.reply; stats[1].textContent=c.follow; stats[2].textContent=c.none;
     const badges=document.querySelectorAll('.navbtn .badge');
     badges[0].textContent=c.all; badges[1].textContent=c.reply; badges[2].textContent=c.follow; badges[3].textContent=c.none;
-    document.getElementById('syncText').textContent=s.gmail.connected?'Gmail متصل • تم التحديث الآن':'وضع تجريبي • Gmail يحتاج OAuth';
+    document.getElementById('syncText').textContent=s.gmail.connected?'Gmail متصل • تم التحديث الآن':(s.gmail.configured?'Gmail جاهز للربط':'Gmail يحتاج إعداد OAuth في Render');
+    const dot=document.getElementById('gmailDot'); dot.classList.toggle('on',s.gmail.connected); dot.classList.toggle('off',!s.gmail.connected);
+    const pulse=document.getElementById('gmailPulse'); pulse.style.background=s.gmail.connected?'var(--green)':'var(--gray)';
+    document.getElementById('gmailChannelState').textContent=s.gmail.connected?'متصل':(s.gmail.configured?'اضغط ربط Gmail':'إعداد OAuth مطلوب');
+    const cb=document.getElementById('connectBtn'); cb.style.display=s.gmail.connected?'none':'inline-block';
   }catch(e){document.getElementById('syncText').textContent='تعذر الوصول للخادم';}
 }
 
@@ -165,9 +169,10 @@ function filterMail(type){
 }
 document.querySelectorAll('[data-filter]').forEach(x=>x.addEventListener('click',()=>filterMail(x.dataset.filter)));
 let searchTimer;document.getElementById('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(loadMessages,250)});
-async function refreshMail(){const b=document.querySelector('.tools .primary');b.textContent='جارٍ التحديث...';await Promise.all([loadStatus(),loadMessages()]);b.textContent='تم التحديث ✓';setTimeout(()=>b.textContent='تحديث',1000)}
+async function refreshMail(){const b=document.querySelector('.tools .primary');b.textContent='جارٍ التحديث...';try{await api('/api/sync',{method:'POST'});}catch(e){} await Promise.all([loadStatus(),loadMessages()]);b.textContent='تم التحديث ✓';setTimeout(()=>b.textContent='تحديث',1000)}
+function connectGmail(){window.location.href='/connect/gmail';}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
-loadStatus();loadMessages();
+const qp=new URLSearchParams(location.search); if(qp.get('gmail')==='connected'){history.replaceState({},'',location.pathname);} loadStatus();loadMessages();
 </script>
 </body>
 </html>

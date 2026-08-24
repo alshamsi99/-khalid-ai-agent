@@ -1,31 +1,31 @@
-# AI Agent Khalid — v3
+# AI Agent Khalid — v4
 
-نسخة Web App + Backend تجريبي.
+نسخة ويب مهيأة لربط Gmail الحقيقي عبر Google OAuth.
 
-## تشغيل محلي
+## Render Environment Variables
+أضف داخل Render > Environment:
 
-```bash
-python -m pip install -r requirements.txt
-./start.sh
-```
+- `GOOGLE_CLIENT_ID` = OAuth Client ID من Google Cloud
+- `GOOGLE_CLIENT_SECRET` = OAuth Client Secret من Google Cloud
+- `GOOGLE_REDIRECT_URI` = `https://khalid-ai-agent.onrender.com/oauth/callback`
 
-ثم افتح: http://localhost:8000
+لا تضع أي سر داخل GitHub.
 
-## الحالة الحالية
+## Google Cloud
+- Gmail API enabled
+- OAuth app in Testing
+- Scope: `https://www.googleapis.com/auth/gmail.modify`
+- Authorized redirect URI: `https://khalid-ai-agent.onrender.com/oauth/callback`
+- أضف حساب Gmail كـ Test user أثناء وضع Testing.
 
-- الواجهة تعمل.
-- API داخلي يعمل.
-- وضع الأمان يمنع الإرسال التلقائي.
-- بيانات البريد الحالية Demo فقط.
-- Gmail الحقيقي يحتاج Google OAuth لموقع مستقل.
+## التشغيل
+Build command:
+`pip install -r requirements.txt`
 
-## ربط Gmail الحقيقي لاحقًا
+Start command:
+`uvicorn app:app --host 0.0.0.0 --port $PORT`
 
-1. إنشاء مشروع Google Cloud.
-2. تفعيل Gmail API.
-3. إنشاء OAuth 2.0 Client ID من نوع Web application.
-4. إضافة Redirect URI الخاص بالموقع المنشور.
-5. استخدام scopes مناسبة للقراءة/التصنيف/إنشاء المسودات.
-6. تخزين الرموز Tokens على الخادم بشكل آمن.
-
-لا تضع Client Secret أو Refresh Token داخل index.html أو JavaScript في المتصفح.
+## الأمان
+- الإرسال التلقائي معطل.
+- v4 يجلب البريد ويصنف الرسائل ويطبق التصنيفات داخل Gmail.
+- التخزين الحالي لرمز OAuth في ملف محلي مناسب للنسخة التجريبية؛ قد تحتاج لإعادة الربط بعد إعادة تشغيل/إعادة نشر Render Free.

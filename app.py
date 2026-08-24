@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://khalid-ai-agent.onrender.com/oauth/callback")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
-app = FastAPI(title="AI Agent Khalid", version="0.5.0")
+app = FastAPI(title="AI Agent Khalid", version="0.5.1")
 
 SETTINGS = {
     "classify": True,
@@ -68,12 +68,18 @@ def ai_configured() -> bool:
 
 
 def load_token() -> Optional[dict]:
-    if not TOKEN_FILE.exists():
-        return None
-    try:
-        return json.loads(TOKEN_FILE.read_text())
-    except Exception:
-        return None
+    env_refresh = os.getenv("GOOGLE_REFRESH_TOKEN", "").strip()
+    token = None
+    if TOKEN_FILE.exists():
+        try:
+            token = json.loads(TOKEN_FILE.read_text())
+        except Exception:
+            token = None
+    if token is None and env_refresh:
+        token = {"refresh_token": env_refresh}
+    elif token is not None and env_refresh and not token.get("refresh_token"):
+        token["refresh_token"] = env_refresh
+    return token
 
 
 def save_token(token: dict) -> None:
@@ -103,7 +109,11 @@ async def refresh_access_token(token: dict) -> dict:
 
 async def gmail_request(method: str, path: str, *, params=None, json_body=None) -> dict:
     token = load_token()
-    if not token or not token.get("access_token"):
+    if not token:
+        raise HTTPException(401, "Gmail not connected")
+    if not token.get("access_token") and token.get("refresh_token"):
+        token = await refresh_access_token(token)
+    if not token.get("access_token"):
         raise HTTPException(401, "Gmail not connected")
     headers = {"Authorization": f"Bearer {token['access_token']}"}
     async with httpx.AsyncClient(timeout=25) as c:
@@ -403,6 +413,13 @@ async def oauth_callback(code: str, state: str):
         await sync_gmail()
     except Exception:
         pass
+
+    if token.get("refresh_token") and not os.getenv("GOOGLE_REFRESH_TOKEN"):
+        rt = token["refresh_token"]
+        safe = (rt.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                  .replace(chr(34), "&quot;").replace(chr(39), "&#39;"))
+        page = f"""<!doctype html><html lang='ar' dir='rtl'><meta name='viewport' content='width=device-width,initial-scale=1'><title>تثبيت اتصال Gmail</title><style>body{{font-family:-apple-system,BlinkMacSystemFont,Arial;background:#07111f;color:#fff;padding:24px;line-height:1.7}}.card{{max-width:720px;margin:auto;background:#101b2d;border:1px solid #2b3b55;border-radius:22px;padding:22px}}code,input{{direction:ltr}}input{{width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #40516d;background:#081321;color:#fff;font-size:14px}}button,a{{display:inline-block;margin-top:14px;padding:12px 16px;border-radius:12px;background:#377cf6;color:#fff;border:0;text-decoration:none;font-weight:700}}.warn{{color:#f6c85f}}</style><div class='card'><h2>تم ربط Gmail ✅</h2><p>باقي خطوة واحدة حتى يبقى Gmail متصلًا بعد أي تحديث أو إعادة تشغيل في Render.</p><p>في Render أضف متغيرًا جديدًا:</p><p><b>KEY</b><br><code>GOOGLE_REFRESH_TOKEN</code></p><p><b>VALUE</b> — انسخ القيمة التالية:</p><input id='rt' type='password' readonly value='{safe}'><button onclick="navigator.clipboard.writeText(document.getElementById('rt').value);this.textContent='تم النسخ ✓'">نسخ Refresh Token</button><p class='warn'>هذه قيمة سرية. لا ترسلها في المحادثة ولا تضعها في GitHub.</p><p>بعد إضافتها في Render اختر <b>Save, rebuild, and deploy</b>. بعدها لن تحتاج لإعادة ربط Gmail عند كل نشر.</p><a href='/'>العودة إلى AI Agent</a></div></html>"""
+        return HTMLResponse(page)
     return RedirectResponse("/?gmail=connected")
 
 

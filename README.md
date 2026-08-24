@@ -1,25 +1,19 @@
-# AI Agent Khalid — v5
+# AI Agent Khalid — v5.1
 
-المرحلة الخامسة من وكيل البريد.
+نسخة تثبيت اتصال Gmail على Render.
 
 ## الجديد
-- قراءة Inbox ومراجعة Spam/Junk وعرض الرسائل التي تبدو حقيقية فقط.
-- تصنيف: يحتاج رد / متابعة / لا إجراء.
-- دعم OpenAI اختياري عبر `OPENAI_API_KEY` لتحسين التصنيف وتوليد ردود مقترحة.
-- إنشاء **مسودة Gmail فقط** للرسائل التي تحتاج ردًا. لا يوجد إرسال تلقائي.
-- زر لنقل الرسالة الحقيقية من Spam/Junk إلى Inbox.
+- يدعم `GOOGLE_REFRESH_TOKEN` كمتغير بيئة دائم.
+- بعد ربط Gmail لأول مرة، إذا لم يكن المتغير موجودًا، تظهر صفحة تعرض Refresh Token لتنسخه إلى Render.
+- بعد حفظه في Render، يبقى Gmail متصلًا بعد Deploy أو Restart.
+- يستمر دعم Inbox + Spam/Junk والتصنيف والمسودات من v5.
 
-## متغيرات Render الموجودة
+## Environment Variables
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URI=https://khalid-ai-agent.onrender.com/oauth/callback`
+- `GOOGLE_REFRESH_TOKEN` ← يضاف بعد الربط الأول في v5.1
+- `OPENAI_API_KEY` (اختياري)
+- `OPENAI_MODEL` (اختياري)
 
-## لإضافة الذكاء الاصطناعي
-أضف في Render:
-- `OPENAI_API_KEY` = مفتاح OpenAI API الخاص بك
-- اختياري: `OPENAI_MODEL=gpt-5.6-luna`
-
-إذا لم تضف مفتاح OpenAI سيعمل التطبيق بقواعد ذكية احتياطية، لكن لن تكون جودة التصنيف وصياغة الردود بنفس المستوى.
-
-## الأمان
-الإرسال التلقائي مقفل. زر "إنشاء مسودة" ينشئ Draft داخل Gmail ولا يرسل الرسالة.
+لا تضع أي Secret في GitHub.

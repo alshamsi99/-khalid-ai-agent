@@ -1,36 +1,25 @@
-# AI Agent Khalid — v4.1
+# AI Agent Khalid — v5
 
-نسخة ويب مهيأة لربط Gmail الحقيقي عبر Google OAuth.
+المرحلة الخامسة من وكيل البريد.
 
-## Render Environment Variables
-أضف داخل Render > Environment:
+## الجديد
+- قراءة Inbox ومراجعة Spam/Junk وعرض الرسائل التي تبدو حقيقية فقط.
+- تصنيف: يحتاج رد / متابعة / لا إجراء.
+- دعم OpenAI اختياري عبر `OPENAI_API_KEY` لتحسين التصنيف وتوليد ردود مقترحة.
+- إنشاء **مسودة Gmail فقط** للرسائل التي تحتاج ردًا. لا يوجد إرسال تلقائي.
+- زر لنقل الرسالة الحقيقية من Spam/Junk إلى Inbox.
 
-- `GOOGLE_CLIENT_ID` = OAuth Client ID من Google Cloud
-- `GOOGLE_CLIENT_SECRET` = OAuth Client Secret من Google Cloud
-- `GOOGLE_REDIRECT_URI` = `https://khalid-ai-agent.onrender.com/oauth/callback`
+## متغيرات Render الموجودة
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI=https://khalid-ai-agent.onrender.com/oauth/callback`
 
-لا تضع أي سر داخل GitHub.
+## لإضافة الذكاء الاصطناعي
+أضف في Render:
+- `OPENAI_API_KEY` = مفتاح OpenAI API الخاص بك
+- اختياري: `OPENAI_MODEL=gpt-5.6-luna`
 
-## Google Cloud
-- Gmail API enabled
-- OAuth app in Testing
-- Scope: `https://www.googleapis.com/auth/gmail.modify`
-- Authorized redirect URI: `https://khalid-ai-agent.onrender.com/oauth/callback`
-- أضف حساب Gmail كـ Test user أثناء وضع Testing.
-
-## التشغيل
-Build command:
-`pip install -r requirements.txt`
-
-Start command:
-`uvicorn app:app --host 0.0.0.0 --port $PORT`
+إذا لم تضف مفتاح OpenAI سيعمل التطبيق بقواعد ذكية احتياطية، لكن لن تكون جودة التصنيف وصياغة الردود بنفس المستوى.
 
 ## الأمان
-- الإرسال التلقائي معطل.
-- v4.1 يجلب البريد ويصنف الرسائل ويطبق التصنيفات داخل Gmail.
-- التخزين الحالي لرمز OAuth في ملف محلي مناسب للنسخة التجريبية؛ قد تحتاج لإعادة الربط بعد إعادة تشغيل/إعادة نشر Render Free.
-
-
-## v4.1 fix
-- إصلاح خطأ JavaScript كان يمنع تحديث حالة Gmail وعرض الرسائل الحقيقية.
-- تحديث Service Worker لمنع بقاء نسخة الواجهة القديمة في كاش Safari.
+الإرسال التلقائي مقفل. زر "إنشاء مسودة" ينشئ Draft داخل Gmail ولا يرسل الرسالة.

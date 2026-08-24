@@ -1,14 +1,17 @@
+import base64
 import json
 import os
 import re
 import secrets
 from datetime import datetime, timezone
+from email.mime.text import MIMEText
+from email.utils import parseaddr
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -18,21 +21,24 @@ TOKEN_FILE = BASE / ".gmail_token.json"
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
+OPENAI_API = "https://api.openai.com/v1/responses"
 SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://khalid-ai-agent.onrender.com/oauth/callback")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
-app = FastAPI(title="AI Agent Khalid", version="0.4.1")
+app = FastAPI(title="AI Agent Khalid", version="0.5.0")
 
 SETTINGS = {
     "classify": True,
     "suggest": True,
     "autosend": False,
     "alerts": True,
+    "review_spam": True,
     "approval_required": True,
 }
 
 OAUTH_STATES = set()
-CACHE = {"messages": [], "updated_at": None, "email": None}
+CACHE = {"messages": [], "updated_at": None, "email": None, "ai_mode": "rules"}
 
 LABEL_NAMES = {
     "reply": "AI/Needs Reply",
@@ -46,6 +52,7 @@ class SettingsPayload(BaseModel):
     suggest: bool = True
     autosend: bool = False
     alerts: bool = True
+    review_spam: bool = True
 
 
 class ActionPayload(BaseModel):
@@ -54,6 +61,10 @@ class ActionPayload(BaseModel):
 
 def client_configured() -> bool:
     return bool(os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"))
+
+
+def ai_configured() -> bool:
+    return bool(os.getenv("OPENAI_API_KEY"))
 
 
 def load_token() -> Optional[dict]:
@@ -115,7 +126,6 @@ def get_header(payload: dict, name: str) -> str:
 
 def classify_message(sender: str, subject: str, snippet: str) -> str:
     text = f"{sender} {subject} {snippet}".lower()
-    # Important account/security/financial notices should be surfaced for human review.
     follow_words = [
         "security alert", "تنبيه أمني", "action required", "مطلوب إجراء", "verify", "verification",
         "invoice", "فاتورة", "payment", "دفع", "overdue", "موعد", "appointment", "account access",
@@ -123,12 +133,10 @@ def classify_message(sender: str, subject: str, snippet: str) -> str:
     ]
     if any(w in text for w in follow_words):
         return "follow"
-
     no_reply_sender = any(w in text for w in ["no-reply", "noreply", "notifications@", "newsletter", "marketing"])
     promo_words = ["credits", "daily credits", "newsletter", "unsubscribe", "promotion", "offer", "sale", "خصم", "عرض"]
     if no_reply_sender or any(w in text for w in promo_words):
         return "none"
-
     request_words = [
         "?", "can you", "could you", "please", "need your", "reply", "response", "let me know",
         "هل", "ممكن", "يرجى", "الرجاء", "أحتاج", "احتاج", "رد", "أفدني", "تأكيد",
@@ -138,12 +146,20 @@ def classify_message(sender: str, subject: str, snippet: str) -> str:
     return "follow"
 
 
-def decision_text(kind: str) -> str:
+def fallback_spam_legit(sender: str, subject: str, snippet: str) -> bool:
+    text = f"{sender} {subject} {snippet}".lower()
+    spammy = ["unsubscribe", "casino", "lottery", "crypto giveaway", "viagra", "winner", "marketing", "newsletter"]
+    human_signal = ["?", "hello", "hi ", "مرحبا", "السلام", "أحتاج", "احتاج", "ممكن", "please", "meeting", "موعد"]
+    return not any(x in text for x in spammy) and any(x in text for x in human_signal)
+
+
+def decision_text(kind: str, source: str = "inbox") -> str:
+    prefix = "هذه الرسالة وصلت إلى Spam/Junk لكنها تبدو مهمة. " if source == "spam" else ""
     if kind == "reply":
-        return "يبدو أن الرسالة تحتاج ردًا. سيتم تجهيز مسودة لاحقًا، ولن يتم إرسال أي شيء تلقائيًا."
+        return prefix + "تحتاج ردًا. يمكن للوكيل تجهيز مسودة، ولن يتم إرسال أي شيء تلقائيًا."
     if kind == "follow":
-        return "لا يوجد رد تلقائي. الرسالة تحتاج مراجعتك أو متابعة منك."
-    return "لا تبدو الرسالة بحاجة إلى رد أو متابعة. يمكن تركها أو أرشفتها."
+        return prefix + "لا يوجد رد تلقائي. الرسالة تحتاج مراجعتك أو متابعة منك."
+    return prefix + "لا تبدو الرسالة بحاجة إلى رد أو متابعة. يمكن تركها أو أرشفتها."
 
 
 def summary_text(sender: str, subject: str, snippet: str) -> str:
@@ -151,6 +167,48 @@ def summary_text(sender: str, subject: str, snippet: str) -> str:
     if len(clean) > 220:
         clean = clean[:217] + "..."
     return f"{subject or 'بدون عنوان'} — {clean}" if clean else f"رسالة من {sender}."
+
+
+def extract_output_text(data: dict) -> str:
+    for item in data.get("output", []):
+        if item.get("type") == "message":
+            for content in item.get("content", []):
+                if content.get("type") == "output_text":
+                    return content.get("text", "")
+    return data.get("output_text", "") or ""
+
+
+async def ai_analyze(sender: str, subject: str, snippet: str, source: str) -> Optional[dict]:
+    if not ai_configured():
+        return None
+    prompt = f"""You are an email triage assistant for one private Gmail inbox.
+Return ONLY valid compact JSON with keys: classification, summary_ar, draft_reply, surface_from_spam.
+classification must be one of reply, follow, none.
+summary_ar must be a short Arabic summary.
+draft_reply must be a concise ready-to-send reply in the same language as the email ONLY when classification=reply, otherwise an empty string.
+surface_from_spam must be true only if a message found in spam appears legitimate or personally relevant; otherwise false.
+Never invent facts, prices, commitments, dates, or approvals. Do not send anything.
+
+Source folder: {source}
+From: {sender}
+Subject: {subject}
+Snippet: {snippet[:1400]}
+"""
+    headers = {"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}", "Content-Type": "application/json"}
+    body = {"model": OPENAI_MODEL, "input": prompt}
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.post(OPENAI_API, headers=headers, json=body)
+        if r.status_code >= 400:
+            return None
+        text = extract_output_text(r.json()).strip()
+        text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.I | re.M).strip()
+        data = json.loads(text)
+        if data.get("classification") not in {"reply", "follow", "none"}:
+            return None
+        return data
+    except Exception:
+        return None
 
 
 async def ensure_labels() -> dict:
@@ -170,64 +228,133 @@ async def ensure_labels() -> dict:
     return out
 
 
+async def list_folder(query: str, limit: int) -> list:
+    data = await gmail_request("GET", "/messages", params={"q": query, "maxResults": limit})
+    return data.get("messages", [])
+
+
 async def sync_gmail(limit: int = 30) -> list:
     profile = await gmail_request("GET", "/profile")
     CACHE["email"] = profile.get("emailAddress")
     labels = await ensure_labels()
 
-    listed = await gmail_request("GET", "/messages", params={"q": "in:inbox -in:spam -in:trash", "maxResults": limit})
+    inbox_rows = await list_folder("in:inbox -in:trash", limit)
+    spam_rows = await list_folder("in:spam -in:trash", min(limit, 20)) if SETTINGS.get("review_spam") else []
+    rows = [(r, "inbox") for r in inbox_rows] + [(r, "spam") for r in spam_rows]
+    seen = set()
     items = []
     ai_label_ids = list(labels.values())
-    for row in listed.get("messages", []):
+    used_ai = False
+
+    for row, source in rows:
         mid = row["id"]
+        if mid in seen:
+            continue
+        seen.add(mid)
         m = await gmail_request(
             "GET",
             f"/messages/{mid}",
-            params={"format": "metadata", "metadataHeaders": ["From", "Subject", "Date"]},
+            params={"format": "metadata", "metadataHeaders": ["From", "Reply-To", "Subject", "Date", "Message-ID"]},
         )
         payload = m.get("payload", {})
         sender = get_header(payload, "From")
         subject = get_header(payload, "Subject") or "(بدون عنوان)"
         snippet = m.get("snippet", "")
-        kind = classify_message(sender, subject, snippet) if SETTINGS["classify"] else "follow"
+
+        ai = await ai_analyze(sender, subject, snippet, source) if SETTINGS["classify"] else None
+        if ai:
+            used_ai = True
+            kind = ai["classification"]
+            summary = ai.get("summary_ar") or summary_text(sender, subject, snippet)
+            draft = ai.get("draft_reply", "") if kind == "reply" else ""
+            surface_spam = bool(ai.get("surface_from_spam", False))
+        else:
+            kind = classify_message(sender, subject, snippet) if SETTINGS["classify"] else "follow"
+            summary = summary_text(sender, subject, snippet)
+            draft = ""
+            surface_spam = fallback_spam_legit(sender, subject, snippet)
+
+        # Do not clutter the dashboard with obvious spam; surface only messages that look legitimate.
+        if source == "spam" and not surface_spam:
+            continue
 
         current_labels = set(m.get("labelIds", []))
         remove_ids = [x for x in ai_label_ids if x in current_labels and x != labels[kind]]
         add_ids = [] if labels[kind] in current_labels else [labels[kind]]
         if remove_ids or add_ids:
-            await gmail_request(
-                "POST",
-                f"/messages/{mid}/modify",
-                json_body={"addLabelIds": add_ids, "removeLabelIds": remove_ids},
-            )
+            await gmail_request("POST", f"/messages/{mid}/modify", json_body={"addLabelIds": add_ids, "removeLabelIds": remove_ids})
 
         ts = m.get("internalDate")
         received = "حديثًا"
+        sort_ts = 0
         if ts:
             try:
-                dt = datetime.fromtimestamp(int(ts) / 1000, tz=timezone.utc)
-                received = dt.strftime("%Y-%m-%d")
+                sort_ts = int(ts)
+                dt = datetime.fromtimestamp(sort_ts / 1000, tz=timezone.utc)
+                received = dt.strftime("%Y-%m-%d %H:%M")
             except Exception:
                 pass
 
-        items.append(
-            {
-                "id": mid,
-                "provider": "gmail",
-                "sender": sender,
-                "subject": subject,
-                "snippet": snippet,
-                "classification": kind,
-                "classification_label": {"reply": "يحتاج رد", "follow": "متابعة", "none": "لا إجراء"}[kind],
-                "received": received,
-                "important": kind == "follow",
-                "summary": summary_text(sender, subject, snippet),
-                "decision": decision_text(kind),
-            }
-        )
+        items.append({
+            "id": mid,
+            "thread_id": m.get("threadId"),
+            "provider": "gmail",
+            "source": source,
+            "source_label": "Spam/Junk" if source == "spam" else "Inbox",
+            "sender": sender,
+            "reply_to": get_header(payload, "Reply-To") or sender,
+            "message_id_header": get_header(payload, "Message-ID"),
+            "subject": subject,
+            "snippet": snippet,
+            "classification": kind,
+            "classification_label": {"reply": "يحتاج رد", "follow": "متابعة", "none": "لا إجراء"}[kind],
+            "received": received,
+            "sort_ts": sort_ts,
+            "important": kind == "follow",
+            "summary": summary,
+            "decision": decision_text(kind, source),
+            "draft_reply": draft,
+            "ai_analyzed": bool(ai),
+        })
+
+    items.sort(key=lambda x: x.get("sort_ts", 0), reverse=True)
     CACHE["messages"] = items
     CACHE["updated_at"] = datetime.now(timezone.utc).isoformat()
+    CACHE["ai_mode"] = "openai" if used_ai else "rules"
     return items
+
+
+def find_cached(message_id: str) -> dict:
+    for m in CACHE["messages"]:
+        if m["id"] == message_id:
+            return m
+    raise HTTPException(404, "Message not found")
+
+
+async def create_gmail_draft(m: dict) -> dict:
+    if m.get("classification") != "reply":
+        raise HTTPException(400, "This message is not classified as needing a reply")
+    body = (m.get("draft_reply") or "").strip()
+    if not body:
+        # Fallback safe draft when no OpenAI key exists.
+        body = "مرحبًا،\n\nشكرًا على رسالتك. استلمت رسالتك وسأراجع الموضوع وأعود إليك قريبًا.\n\nتحياتي"
+    recipient = parseaddr(m.get("reply_to") or m.get("sender") or "")[1]
+    if not recipient:
+        raise HTTPException(400, "Could not determine reply recipient")
+    subject = m.get("subject", "")
+    if not subject.lower().startswith("re:"):
+        subject = "Re: " + subject
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["To"] = recipient
+    msg["Subject"] = subject
+    if m.get("message_id_header"):
+        msg["In-Reply-To"] = m["message_id_header"]
+        msg["References"] = m["message_id_header"]
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode().rstrip("=")
+    payload = {"message": {"raw": raw}}
+    if m.get("thread_id"):
+        payload["message"]["threadId"] = m["thread_id"]
+    return await gmail_request("POST", "/drafts", json_body=payload)
 
 
 @app.get("/connect/gmail")
@@ -288,18 +415,16 @@ async def status():
         except Exception:
             connected = False
     items = CACHE["messages"] if connected else []
-    counts = {"all": len(items), "reply": 0, "follow": 0, "none": 0}
+    counts = {"all": len(items), "reply": 0, "follow": 0, "none": 0, "spam_review": 0}
     for m in items:
         counts[m["classification"]] += 1
+        if m.get("source") == "spam":
+            counts["spam_review"] += 1
     return {
         "ok": True,
         "mode": "live" if connected else "setup",
-        "gmail": {
-            "connected": connected,
-            "configured": client_configured(),
-            "email": CACHE.get("email"),
-            "label": "متصل" if connected else ("جاهز للربط" if client_configured() else "يحتاج مفاتيح OAuth"),
-        },
+        "gmail": {"connected": connected, "configured": client_configured(), "email": CACHE.get("email")},
+        "ai": {"configured": ai_configured(), "mode": CACHE.get("ai_mode", "rules"), "model": OPENAI_MODEL if ai_configured() else None},
         "whatsapp": {"connected": False},
         "instagram": {"connected": False},
         "counts": counts,
@@ -310,7 +435,7 @@ async def status():
 @app.post("/api/sync")
 async def sync_now():
     items = await sync_gmail()
-    return {"ok": True, "count": len(items), "updated_at": CACHE["updated_at"]}
+    return {"ok": True, "count": len(items), "updated_at": CACHE["updated_at"], "ai_mode": CACHE["ai_mode"]}
 
 
 @app.get("/api/messages")
@@ -332,25 +457,29 @@ async def messages(classification: str | None = None, q: str | None = None):
 async def message(message_id: str):
     if not CACHE["messages"]:
         await sync_gmail()
-    for m in CACHE["messages"]:
-        if m["id"] == message_id:
-            return m
-    raise HTTPException(404, "Message not found")
+    return find_cached(message_id)
 
 
 @app.post("/api/messages/{message_id}/action")
 async def message_action(message_id: str, payload: ActionPayload):
+    m = find_cached(message_id)
     if payload.action == "archive":
         await gmail_request("POST", f"/messages/{message_id}/modify", json_body={"removeLabelIds": ["INBOX"]})
-        CACHE["messages"] = [m for m in CACHE["messages"] if m["id"] != message_id]
+        CACHE["messages"] = [x for x in CACHE["messages"] if x["id"] != message_id]
         return {"ok": True, "message": "تمت أرشفة الرسالة."}
+    if payload.action == "move_to_inbox":
+        await gmail_request("POST", f"/messages/{message_id}/modify", json_body={"addLabelIds": ["INBOX"], "removeLabelIds": ["SPAM"]})
+        m["source"] = "inbox"; m["source_label"] = "Inbox"
+        return {"ok": True, "message": "تم نقل الرسالة من Spam/Junk إلى الوارد."}
     if payload.action in {"follow", "no_action"}:
         labels = await ensure_labels()
         kind = "follow" if payload.action == "follow" else "none"
         await gmail_request("POST", f"/messages/{message_id}/modify", json_body={"addLabelIds": [labels[kind]]})
+        m["classification"] = kind
         return {"ok": True, "message": "تم تحديث التصنيف."}
-    if payload.action == "approve_draft":
-        return {"ok": False, "message": "إنشاء/إرسال الردود غير مفعّل بعد. سيبقى الإرسال بموافقتك فقط."}
+    if payload.action == "create_draft":
+        d = await create_gmail_draft(m)
+        return {"ok": True, "message": "تم إنشاء مسودة رد داخل Gmail. لم يتم إرسالها.", "draft_id": d.get("id")}
     raise HTTPException(400, "Unsupported action")
 
 
@@ -370,11 +499,8 @@ def save_settings(payload: SettingsPayload):
 @app.get("/api/integrations")
 def integrations():
     return {
-        "gmail": {
-            "state": "connected" if load_token() else "ready_to_connect",
-            "scope": SCOPE,
-            "redirect_uri": REDIRECT_URI,
-        },
+        "gmail": {"state": "connected" if load_token() else "ready_to_connect", "scope": SCOPE, "redirect_uri": REDIRECT_URI},
+        "openai": {"state": "connected" if ai_configured() else "optional", "model": OPENAI_MODEL},
         "whatsapp": {"state": "planned"},
         "instagram": {"state": "planned"},
     }

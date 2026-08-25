@@ -135,8 +135,28 @@ def get_header(payload: dict, name: str) -> str:
     return ""
 
 
+def direct_reply_signal(text: str) -> bool:
+    """Return True when the sender is clearly waiting for an answer/decision.
+
+    This rule has priority over generic follow-up keywords such as appointment/invoice.
+    """
+    text = (text or "").lower()
+    request_words = [
+        "?", "can you", "could you", "would you", "will you", "please confirm", "please let me know",
+        "do you want", "would you like", "are you available", "what time", "which time",
+        "book for you", "schedule for you", "appointment for you", "need your approval", "need your confirmation",
+        "هل", "هل يمكن", "هل تريد", "هل ترغب", "هل يناسب", "هل تفضل", "ممكن", "ممكن أحجز", "ممكن احجز",
+        "احجز لك", "أحجز لك", "موعد لك", "أي وقت", "اي وقت", "متى يناسب", "أكد", "تأكيدك", "موافقتك",
+        "يرجى التأكيد", "الرجاء التأكيد", "أفدني", "افدني", "ردك", "تحتاج رد",
+    ]
+    return any(w in text for w in request_words)
+
+
 def classify_message(sender: str, subject: str, snippet: str) -> str:
     text = f"{sender} {subject} {snippet}".lower()
+    # Highest priority: a direct question/request means the sender is waiting for a reply.
+    if direct_reply_signal(text):
+        return "reply"
     follow_words = [
         "security alert", "تنبيه أمني", "action required", "مطلوب إجراء", "verify", "verification",
         "invoice", "فاتورة", "payment", "دفع", "overdue", "موعد", "appointment", "account access",
@@ -148,12 +168,6 @@ def classify_message(sender: str, subject: str, snippet: str) -> str:
     promo_words = ["credits", "daily credits", "newsletter", "unsubscribe", "promotion", "offer", "sale", "خصم", "عرض"]
     if no_reply_sender or any(w in text for w in promo_words):
         return "none"
-    request_words = [
-        "?", "can you", "could you", "please", "need your", "reply", "response", "let me know",
-        "هل", "ممكن", "يرجى", "الرجاء", "أحتاج", "احتاج", "رد", "أفدني", "تأكيد",
-    ]
-    if any(w in text for w in request_words):
-        return "reply"
     return "follow"
 
 
@@ -234,6 +248,12 @@ language must be the main language of the sender's message such as ar or en.
 tone must be one of: formal, neutral, friendly.
 draft_reply must be a polished ready-to-send reply ONLY when classification=reply; otherwise empty.
 
+Classification priority (IMPORTANT):
+- If the sender asks a direct question, asks for approval/confirmation/decision, asks whether to book or schedule an appointment, asks availability, or otherwise clearly waits for an answer, classification MUST be reply.
+- A message about an appointment is follow ONLY when it is merely an informational reminder/status and does not ask the user to answer.
+- Security alerts, invoices, notices, or status updates that need the user's review but no direct answer are follow.
+- Promotions/automated notices that require nothing are none.
+
 Reply rules:
 - Reply in the same language as the sender unless the message clearly asks for another language.
 - Match the sender's tone while staying professional and concise.
@@ -267,6 +287,12 @@ Body:
         data = json.loads(text)
         if data.get("classification") not in {"reply", "follow", "none"}:
             return None
+        # Deterministic safety net: direct questions/approval/booking requests always need a reply.
+        source_text = f"{subject} {snippet} {body_text}"
+        if direct_reply_signal(source_text) and data.get("classification") != "reply":
+            data["classification"] = "reply"
+            if not (data.get("draft_reply") or "").strip():
+                data["draft_reply"] = "شكرًا على رسالتك. نعم، يرجى إرسال الخيارات أو المواعيد المتاحة لأؤكد الأنسب منها."
         return data
     except Exception:
         return None

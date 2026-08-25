@@ -147,6 +147,14 @@ async function openMail(id){
   document.getElementById('mMeta').textContent='من: '+m.sender+' • التصنيف: '+typeLabel[m.classification]+' • '+(m.source_label||'Inbox');
   document.getElementById('mSummary').textContent=m.summary;
   document.getElementById('mDecision').textContent=m.decision;
+  const aiMetaPanel=document.getElementById('aiMetaPanel');
+  const aiMeta=document.getElementById('mAiMeta');
+  if(m.ai_analyzed && (m.language || m.tone)){
+    const langLabel={ar:'العربية',en:'الإنجليزية'}[m.language]||m.language||'تلقائي';
+    const toneLabel={formal:'رسمي',neutral:'متوازن',friendly:'ودّي'}[m.tone]||m.tone||'تلقائي';
+    aiMeta.textContent='لغة الرسالة: '+langLabel+' • النبرة: '+toneLabel+' • الرد مخصص لمحتوى الرسالة';
+    aiMetaPanel.style.display='block';
+  }else{aiMetaPanel.style.display='none'; aiMeta.textContent='';}
   const draftPanel=document.getElementById('draftPanel');
   const draftBox=document.getElementById('mDraft');
   if(m.classification==='reply'){

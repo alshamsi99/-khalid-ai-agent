@@ -26,7 +26,7 @@ SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://khalid-ai-agent.onrender.com/oauth/callback")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
-app = FastAPI(title="AI Agent Khalid", version="0.5.2")
+app = FastAPI(title="AI Agent Khalid", version="0.5.3")
 
 SETTINGS = {
     "classify": True,
@@ -180,6 +180,40 @@ def summary_text(sender: str, subject: str, snippet: str) -> str:
     return f"{subject or 'بدون عنوان'} — {clean}" if clean else f"رسالة من {sender}."
 
 
+def decode_b64url(data: str) -> str:
+    if not data:
+        return ""
+    try:
+        pad = "=" * (-len(data) % 4)
+        raw = base64.urlsafe_b64decode(data + pad)
+        return raw.decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def extract_message_text(payload: dict) -> str:
+    texts = []
+    def walk(part: dict):
+        mime = (part.get("mimeType") or "").lower()
+        body = part.get("body") or {}
+        data = body.get("data")
+        if data and mime in {"text/plain", "text/html"}:
+            text = decode_b64url(data)
+            if mime == "text/html":
+                text = re.sub(r"<[^>]+>", " ", text)
+                text = re.sub(r"&nbsp;", " ", text, flags=re.I)
+            text = re.sub(r"\s+", " ", text).strip()
+            if text:
+                texts.append(text)
+        for child in part.get("parts", []) or []:
+            walk(child)
+    walk(payload or {})
+    if not texts:
+        return ""
+    # Prefer the first plain-text-like content and avoid repeating multipart alternatives.
+    return max(texts, key=lambda x: min(len(x), 12000))[:12000]
+
+
 def extract_output_text(data: dict) -> str:
     for item in data.get("output", []):
         if item.get("type") == "message":
@@ -189,21 +223,37 @@ def extract_output_text(data: dict) -> str:
     return data.get("output_text", "") or ""
 
 
-async def ai_analyze(sender: str, subject: str, snippet: str, source: str) -> Optional[dict]:
+async def ai_analyze(sender: str, subject: str, snippet: str, body_text: str, source: str) -> Optional[dict]:
     if not ai_configured():
         return None
-    prompt = f"""You are an email triage assistant for one private Gmail inbox.
-Return ONLY valid compact JSON with keys: classification, summary_ar, draft_reply, surface_from_spam.
+    prompt = f"""You are a careful executive email assistant for one private Gmail inbox.
+Return ONLY valid compact JSON with keys: classification, summary_ar, draft_reply, surface_from_spam, language, tone.
 classification must be one of reply, follow, none.
-summary_ar must be a short Arabic summary.
-draft_reply must be a concise ready-to-send reply in the same language as the email ONLY when classification=reply, otherwise an empty string.
+summary_ar must be a short factual Arabic summary.
+language must be the main language of the sender's message such as ar or en.
+tone must be one of: formal, neutral, friendly.
+draft_reply must be a polished ready-to-send reply ONLY when classification=reply; otherwise empty.
+
+Reply rules:
+- Reply in the same language as the sender unless the message clearly asks for another language.
+- Match the sender's tone while staying professional and concise.
+- Answer the actual request directly when the available message content allows it.
+- Do not use generic filler like 'I will review and get back to you' unless the message truly requires later review.
+- Never invent facts, prices, dates, approvals, attachments, actions already taken, or commitments not supported by the message.
+- If key information is missing, ask one concise clarifying question instead of guessing.
+- Do not claim that an email was sent, a payment was made, a file was attached, or a task was completed.
+- Do not include a subject line in draft_reply.
+- Keep normal replies roughly 2-6 sentences unless the incoming email clearly requires more detail.
+
 surface_from_spam must be true only if a message found in spam appears legitimate or personally relevant; otherwise false.
-Never invent facts, prices, commitments, dates, or approvals. Do not send anything.
+Do not send anything.
 
 Source folder: {source}
 From: {sender}
 Subject: {subject}
-Snippet: {snippet[:1400]}
+Snippet: {snippet[:1800]}
+Body:
+{body_text[:6000]}
 """
     headers = {"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}", "Content-Type": "application/json"}
     body = {"model": OPENAI_MODEL, "input": prompt}
@@ -265,25 +315,30 @@ async def sync_gmail(limit: int = 30) -> list:
         m = await gmail_request(
             "GET",
             f"/messages/{mid}",
-            params={"format": "metadata", "metadataHeaders": ["From", "Reply-To", "Subject", "Date", "Message-ID"]},
+            params={"format": "full"},
         )
         payload = m.get("payload", {})
         sender = get_header(payload, "From")
         subject = get_header(payload, "Subject") or "(بدون عنوان)"
         snippet = m.get("snippet", "")
+        body_text = extract_message_text(payload) or snippet
 
-        ai = await ai_analyze(sender, subject, snippet, source) if SETTINGS["classify"] else None
+        ai = await ai_analyze(sender, subject, snippet, body_text, source) if SETTINGS["classify"] else None
         if ai:
             used_ai = True
             kind = ai["classification"]
             summary = ai.get("summary_ar") or summary_text(sender, subject, snippet)
             draft = ai.get("draft_reply", "") if kind == "reply" else ""
             surface_spam = bool(ai.get("surface_from_spam", False))
+            language = ai.get("language", "")
+            tone = ai.get("tone", "")
         else:
             kind = classify_message(sender, subject, snippet) if SETTINGS["classify"] else "follow"
             summary = summary_text(sender, subject, snippet)
             draft = ""
             surface_spam = fallback_spam_legit(sender, subject, snippet)
+            language = ""
+            tone = ""
 
         # Do not clutter the dashboard with obvious spam; surface only messages that look legitimate.
         if source == "spam" and not surface_spam:
@@ -325,6 +380,8 @@ async def sync_gmail(limit: int = 30) -> list:
             "summary": summary,
             "decision": decision_text(kind, source),
             "draft_reply": draft,
+            "language": language,
+            "tone": tone,
             "ai_analyzed": bool(ai),
         })
 

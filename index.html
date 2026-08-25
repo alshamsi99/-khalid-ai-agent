@@ -147,7 +147,7 @@ function renderMessages(){
   el.innerHTML=cache.map(m=>`<article class="mail" role="button" tabindex="0" data-message-id="${esc(m.id)}">
     <div><span class="tag ${typeClass[m.classification]}">${typeLabel[m.classification]}</span>${m.source==='spam'?'<span class="tag follow" style="margin-top:6px">Spam/Junk</span>':''}</div>
     <div><h3>${esc(m.sender.split('<')[0].trim())} — ${esc(m.subject)}</h3><p>${esc(m.snippet)}</p></div>
-    <div class="mail-open"><time>${esc(m.received)}</time><button type="button" class="btn open-mail-btn" data-open-message="${esc(m.id)}">فتح الرسالة</button></div></article>`).join('');
+    <div class="mail-open"><time>${esc(m.received)}</time><a class="btn open-mail-btn" href="/message/${encodeURIComponent(m.id)}" style="text-decoration:none;text-align:center">فتح الرسالة</a></div></article>`).join('');
 }
 
 function paintMailModal(m,id){

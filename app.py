@@ -26,7 +26,7 @@ SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "https://khalid-ai-agent.onrender.com/oauth/callback")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 
-app = FastAPI(title="AI Agent Khalid", version="0.5.1")
+app = FastAPI(title="AI Agent Khalid", version="0.5.2")
 
 SETTINGS = {
     "classify": True,
@@ -57,6 +57,7 @@ class SettingsPayload(BaseModel):
 
 class ActionPayload(BaseModel):
     action: str
+    draft_body: Optional[str] = None
 
 
 def client_configured() -> bool:
@@ -341,10 +342,10 @@ def find_cached(message_id: str) -> dict:
     raise HTTPException(404, "Message not found")
 
 
-async def create_gmail_draft(m: dict) -> dict:
+async def create_gmail_draft(m: dict, body_override: Optional[str] = None) -> dict:
     if m.get("classification") != "reply":
         raise HTTPException(400, "This message is not classified as needing a reply")
-    body = (m.get("draft_reply") or "").strip()
+    body = (body_override if body_override is not None else (m.get("draft_reply") or "")).strip()
     if not body:
         # Fallback safe draft when no OpenAI key exists.
         body = "مرحبًا،\n\nشكرًا على رسالتك. استلمت رسالتك وسأراجع الموضوع وأعود إليك قريبًا.\n\nتحياتي"
@@ -495,7 +496,7 @@ async def message_action(message_id: str, payload: ActionPayload):
         m["classification"] = kind
         return {"ok": True, "message": "تم تحديث التصنيف."}
     if payload.action == "create_draft":
-        d = await create_gmail_draft(m)
+        d = await create_gmail_draft(m, payload.draft_body)
         return {"ok": True, "message": "تم إنشاء مسودة رد داخل Gmail. لم يتم إرسالها.", "draft_id": d.get("id")}
     raise HTTPException(400, "Unsupported action")
 

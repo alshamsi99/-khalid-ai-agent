@@ -1,19 +1,10 @@
-# AI Agent Khalid — v5.1
+# AI Agent Khalid — v5.2
 
-نسخة تثبيت اتصال Gmail على Render.
+إضافة مراجعة الرد المقترح قبل إنشاء مسودة Gmail.
 
 ## الجديد
-- يدعم `GOOGLE_REFRESH_TOKEN` كمتغير بيئة دائم.
-- بعد ربط Gmail لأول مرة، إذا لم يكن المتغير موجودًا، تظهر صفحة تعرض Refresh Token لتنسخه إلى Render.
-- بعد حفظه في Render، يبقى Gmail متصلًا بعد Deploy أو Restart.
-- يستمر دعم Inbox + Spam/Junk والتصنيف والمسودات من v5.
-
-## Environment Variables
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI=https://khalid-ai-agent.onrender.com/oauth/callback`
-- `GOOGLE_REFRESH_TOKEN` ← يضاف بعد الربط الأول في v5.1
-- `OPENAI_API_KEY` (اختياري)
-- `OPENAI_MODEL` (اختياري)
-
-لا تضع أي Secret في GitHub.
+- يظهر مربع **الرد المقترح** لكل رسالة مصنفة «يحتاج رد».
+- يمكن تعديل النص يدويًا داخل التطبيق.
+- زر إنشاء المسودة يستخدم النص المعدّل نفسه.
+- لا يتم إرسال أي بريد تلقائيًا.
+- تبقى مزايا Gmail الدائم + Inbox/Spam + OpenAI من v5.1.

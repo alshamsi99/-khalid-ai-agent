@@ -13,7 +13,6 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
-from html import escape as html_escape
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -607,26 +606,6 @@ def integrations():
         "instagram": {"state": "planned"},
     }
 
-
-
-@app.get("/message/{message_id}", response_class=HTMLResponse)
-async def message_page(message_id: str):
-    if not CACHE["messages"]:
-        await sync_gmail()
-    m = find_cached(message_id)
-    cls = m.get("classification", "none")
-    cls_label = {"reply":"يحتاج رد","follow":"متابعة","none":"لا يحتاج إجراء"}.get(cls, cls)
-    sender = html_escape(str(m.get("sender", "")))
-    subject = html_escape(str(m.get("subject", "رسالة")))
-    summary = html_escape(str(m.get("summary") or m.get("snippet") or ""))
-    decision = html_escape(str(m.get("decision") or ""))
-    draft = html_escape(str(m.get("draft_reply") or ""))
-    source = html_escape(str(m.get("source_label") or "Inbox"))
-    draft_html = ""
-    if cls == "reply":
-        draft_html = f"<div class='panel'><h3>الرد المقترح</h3><textarea id='draft' style='width:100%;min-height:220px;background:#091321;color:#fff;border:1px solid #26364f;border-radius:14px;padding:14px;font:inherit;line-height:1.8'>{draft}</textarea><button id='draftBtn' onclick='createDraft()' style='margin-top:12px;width:100%;border:0;border-radius:14px;padding:14px;background:#2563eb;color:#fff;font:inherit;font-weight:700'>إنشاء المسودة في Gmail</button><div id='result' style='margin-top:10px;color:#cbd5e1'></div></div>"
-    page = f"""<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'><title>{subject}</title><style>*{{box-sizing:border-box}}body{{margin:0;background:linear-gradient(180deg,#07101d,#0f172a);color:#e5eefc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,sans-serif}}.wrap{{max-width:760px;margin:auto;padding:18px 18px 50px}}a.back{{display:inline-block;color:#bfdbfe;text-decoration:none;background:#172338;border:1px solid #26364f;padding:10px 14px;border-radius:12px;margin-bottom:16px}}.card{{background:#101827;border:1px solid #26364f;border-radius:22px;padding:18px}}h1{{font-size:22px;margin:0 0 8px}}.meta{{color:#94a3b8;font-size:13px;line-height:1.7}}.tag{{display:inline-block;margin-top:10px;padding:7px 11px;border-radius:999px;background:#1e3a8a;color:#bfdbfe;font-size:12px;font-weight:700}}.panel{{background:#0b1424;border:1px solid #26364f;border-radius:16px;padding:15px;margin-top:14px}}.panel h3{{font-size:15px;margin:0 0 9px}}.panel p{{margin:0;color:#cbd5e1;line-height:1.9;white-space:pre-wrap}}</style></head><body><div class='wrap'><a class='back' href='/'>← العودة للبريد</a><div class='card'><h1>{subject}</h1><div class='meta'>من: {sender}<br>التصنيف: {html_escape(cls_label)} • {source}</div><span class='tag'>{html_escape(cls_label)}</span><div class='panel'><h3>ملخص الوكيل</h3><p>{summary}</p></div><div class='panel'><h3>قرار الوكيل</h3><p>{decision}</p></div>{draft_html}</div></div><script>async function createDraft(){{const b=document.getElementById('draftBtn'),r=document.getElementById('result');b.disabled=true;b.textContent='جارٍ إنشاء المسودة...';try{{const x=await fetch('/api/messages/{message_id}/action',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{action:'create_draft',draft_body:document.getElementById('draft').value}})}});const j=await x.json();if(!x.ok)throw new Error(j.detail||'فشل إنشاء المسودة');r.textContent=j.message||'تم إنشاء المسودة.';}}catch(e){{r.textContent='تعذر إنشاء المسودة: '+e.message;}}finally{{b.disabled=false;b.textContent='إنشاء المسودة في Gmail';}}}}</script></body></html>"""
-    return HTMLResponse(page)
 
 @app.get("/")
 def root():
